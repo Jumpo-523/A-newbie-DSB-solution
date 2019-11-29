@@ -1,4 +1,4 @@
-# A-newbie-DSB-solution
+# useful tips for data competitions
 
 - this repository will not show my solution until the competition is completed. 
 
