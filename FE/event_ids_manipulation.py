@@ -95,7 +95,8 @@ def read_data():
 
 
 # len(specs.args.drop_duplicates())
-def get_eid_groups(specs:pd.DataFrame):->dict
+def get_eid_groups(specs:pd.DataFrame):
+    specs["args"] = specs.args.map(lambda x: json.loads(x)) 
     specs_keys = pd.DataFrame(specs.args.map(lambda x: {dic["name"]:1 for dic in x}).to_list()).fillna("nan")
     cols_specs_keys = list(specs_keys.columns)
     event_id_group = {}
