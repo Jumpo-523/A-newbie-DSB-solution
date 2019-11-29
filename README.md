@@ -2,7 +2,9 @@
 
 - 2019/11/29
   - add event_id_manipulation.py (TBD)
-  
+  - How Bayesian Optimization can work for hyper-parameter tuning.
+    - I want to refer the slides in PyCon2019.
+      (Nomura-san's slide (working at CA))[https://speakerdeck.com/nmasahiro/ji-jie-xue-xi-niokeru-haihaharametazui-shi-hua-falseli-lun-toshi-jian]
   
 
 
