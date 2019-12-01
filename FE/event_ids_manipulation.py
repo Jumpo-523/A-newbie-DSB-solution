@@ -94,4 +94,15 @@ def read_data():
 
 
 
-
+# len(specs.args.drop_duplicates())
+def get_eid_groups(specs:pd.DataFrame):
+    specs["args"] = specs.args.map(lambda x: json.loads(x)) 
+    specs_keys = pd.DataFrame(specs.args.map(lambda x: {dic["name"]:1 for dic in x}).to_list()).fillna("nan")
+    cols_specs_keys = list(specs_keys.columns)
+    event_id_group = {}
+    for i, (j, group) in enumerate(specs.join(specs_keys).groupby(by=cols_specs_keys, as_index=False, sort=False)):
+    #     print(group.event_id.to_list())
+        sameType_EventIds = group.event_id.to_list()
+        for eid in sameType_EventIds:
+            event_id_group[eid] = i
+    return event_id_group
