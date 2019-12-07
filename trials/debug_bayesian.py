@@ -48,6 +48,8 @@ import json
 import gc
 from numba import jit
 
+
+
 from functools import partial
 import scipy as sp
 
@@ -66,6 +68,9 @@ import re
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
+# import pdb; pdb.set_trace()
+# from commons.devtools import say_notify
+# say_notify("hogehoge")
 
 titles_dict = {'Dino Drink':{"good":'"correct":true',"bad":'"correct":false'},
 'Watering Hole (Activity)':{"good":'"filled":true', "bad":'"filled":false'},
@@ -100,33 +105,33 @@ def each_game_and_activity_score(titles_dict, session):
             elif good_and_bad_dict.get(key):
                 search_word = r"|".join(good_and_bad_dict[key])
                 counts = session.event_data.str.contains(search_word).sum()
-                print(counts)
+                # print(counts)
                 result[key] = counts    
         summand = result["good"] + result["bad"]
         return result["good"]/summand if summand >0 else -1 
     elif titles_dict[session_title] == 4000:
         # just a pure activity so that I want to count how many users tap or enjoy the one. 
-        return sesison.event_data.str.contains(r'"event_code":4\d{3}').sum()
+        return session.event_data.str.contains(r'"event_code":4\d{3}').sum()
 
 def read_data():
     print('Reading train.csv file....')
-    train = pd.read_csv('./data-science-bowl-2019/train.csv')
+    train = pd.read_csv('../data-science-bowl-2019/originals/train.csv')
     print('Training.csv file have {} rows and {} columns'.format(train.shape[0], train.shape[1]))
 
     print('Reading test.csv file....')
-    test = pd.read_csv('./data-science-bowl-2019/test.csv')
+    test = pd.read_csv('../data-science-bowl-2019/originals/test.csv')
     print('Test.csv file have {} rows and {} columns'.format(test.shape[0], test.shape[1]))
 
     print('Reading train_labels.csv file....')
-    train_labels = pd.read_csv('./data-science-bowl-2019/train_labels.csv')
+    train_labels = pd.read_csv('../data-science-bowl-2019/originals/train_labels.csv')
     print('Train_labels.csv file have {} rows and {} columns'.format(train_labels.shape[0], train_labels.shape[1]))
 
     print('Reading specs.csv file....')
-    specs = pd.read_csv('./data-science-bowl-2019/specs.csv')
+    specs = pd.read_csv('../data-science-bowl-2019/originals/specs.csv')
     print('Specs.csv file have {} rows and {} columns'.format(specs.shape[0], specs.shape[1]))
 
     print('Reading sample_submission.csv file....')
-    sample_submission = pd.read_csv('./data-science-bowl-2019/sample_submission.csv')
+    sample_submission = pd.read_csv('../data-science-bowl-2019/originals/sample_submission.csv')
     print('Sample_submission.csv file have {} rows and {} columns'.format(sample_submission.shape[0], sample_submission.shape[1]))
     return train, test, train_labels, specs, sample_submission
 
@@ -171,6 +176,8 @@ def encode_title(train, test, train_labels, titiles_dict):
                 list_of_event_code, activities_labels, assess_titles,\
                 list_of_event_id, all_title_event_code, titles_dict
 
+
+
 def get_data(user_sample, titles_dict, test_set=False):
     '''
     The user_sample is a DataFrame from train or test where the only one 
@@ -204,6 +211,8 @@ def get_data(user_sample, titles_dict, test_set=False):
     # calculate the last score of each activity
     gameActivityScores = {'score_title_' + str(ga_title): 0 for ga_title in titles_dict.keys()}
     
+
+
     # itarates through each session of one instalation_id
     for i, session in user_sample.groupby('game_session', sort=False):
         # i = game_session_id
@@ -213,11 +222,11 @@ def get_data(user_sample, titles_dict, test_set=False):
         session_type = session['type'].iloc[0]
         session_title = session['title'].iloc[0]
         session_title_text = activities_labels[session_title]
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         if gameActivityScores.get('score_title_' + str(session_title))==0:
-            import pdb;pdb.set_trace()
+            # import pdb;pdb.set_trace()
             score_ = each_game_and_activity_score(titles_dict, session)
-            print(score_)
+            # print(score_)
             gameActivityScores['score_title_' + str(session_title)] = score_
             
         # for each assessment, and only this kind off session, the features below are processed
@@ -235,7 +244,7 @@ def get_data(user_sample, titles_dict, test_set=False):
             features.update(event_code_count.copy())
             features.update(event_id_count.copy())
             features.update(title_count.copy())
-            features.update(title_event_code_count.copy())
+            # features.update(title_event_code_count.copy())
             features.update(last_accuracy_title.copy())
             
             features.update(gameActivityScores.copy())
@@ -303,7 +312,7 @@ def get_data(user_sample, titles_dict, test_set=False):
         event_code_count = update_counters(event_code_count, "event_code")
         event_id_count = update_counters(event_id_count, "event_id")
         title_count = update_counters(title_count, 'title')
-        title_event_code_count = update_counters(title_event_code_count, 'title_event_code')
+        # title_event_code_count = update_counters(title_event_code_count, 'title_event_code')
 
         # counts how many actions the player has done so far, used in the feature of the same name
         accumulated_actions += len(session)
@@ -328,18 +337,223 @@ def get_train_and_test(train, test, titles_dict):
         compiled_test.append(test_data)
     reduce_train = pd.DataFrame(compiled_train)
     reduce_test = pd.DataFrame(compiled_test)
-    categoricals = ['session_title']
-    return reduce_train, reduce_test, categoricals
+    return reduce_train, reduce_test
 
 
+def preprocess(reduce_train, reduce_test):
+    for df in [reduce_train, reduce_test]:
+        df['installation_session_count'] = df.groupby(['installation_id'])['Clip'].transform('count')
+        df['installation_duration_mean'] = df.groupby(['installation_id'])['duration_mean'].transform('mean')
+        #df['installation_duration_std'] = df.groupby(['installation_id'])['duration_mean'].transform('std')
+        df['installation_title_nunique'] = df.groupby(['installation_id'])['session_title'].transform('nunique')
+        event_codes = [str(ec) for ec in [2050, 4100, 4230, 5000, 4235, 2060, 4110, 5010, 2070, 2075, 2080, 2081, 2083, 3110, 4010, 3120, 3121, 4020, 4021, 
+                                        4022, 4025, 4030, 4031, 3010, 4035, 4040, 3020, 3021, 4045, 2000, 4050, 2010, 2020, 4070, 2025, 2030, 4080, 2035, 
+                                        2040, 4090, 4220, 4095]]
+        # df['sum_event_code_count'] = df[[str(ec) for ec in event_codes ]].sum(axis = 1)
+        
+        # df['installation_event_code_count_mean'] = df.groupby(['installation_id'])['sum_event_code_count'].transform('mean')
+        #df['installation_event_code_count_std'] = df.groupby(['installation_id'])['sum_event_code_count'].transform('std')
+        df.drop(columns=event_codes, inplace=True)
+    features = reduce_train.loc[(reduce_train.sum(axis=1) != 0), (reduce_train.sum(axis=0) != 0)].columns # delete useless columns
+    features = [x for x in features if x not in ['accuracy_group', 'installation_id']] + ['acc_' + title for title in assess_titles]
+    return reduce_train, reduce_test, features
 
+def LGB_bayesian(max_depth,
+                 lambda_l1,
+                 lambda_l2,
+                 bagging_fraction,
+                 bagging_freq,
+                 colsample_bytree,
+                 learning_rate):
+    
+    params = {
+        'boosting_type': 'gbdt',
+        'metric': 'rmse',
+        'objective': 'regression',
+        'eval_metric': 'cappa',
+        'n_jobs': -1,
+        'seed': 42,
+        'early_stopping_rounds': 100,
+        'n_estimators': 2000,
+        'learning_rate': learning_rate,
+        'max_depth': int(max_depth),
+        'lambda_l1': lambda_l1,
+        'lambda_l2': lambda_l2,
+        'bagging_fraction': bagging_fraction,
+        'bagging_freq': int(bagging_freq),
+        'colsample_bytree': colsample_bytree,
+        'verbose': 0
+    }
+    
+    mt = MainTransformer()
+    ft = FeatureTransformer()
+    transformers = {'ft': ft}
+    model = RegressorModel(model_wrapper=LGBWrapper_regr())
+    model.fit(X=reduce_train, 
+              y=y, 
+              folds=folds, 
+              params=params, 
+              preprocesser=mt, 
+              transformers=transformers,
+              eval_metric='cappa', 
+              cols_to_drop=cols_to_drop,
+              plot=False)
+    
+    return model.scores['valid']
 
 if __name__ == "__main__":
     # read data
+
     train, test, train_labels, specs, sample_submission = read_data()
     # get usefull dict with maping encode
     train, test, train_labels, win_code, list_of_user_activities,\
                 list_of_event_code, activities_labels, assess_titles,\
                 list_of_event_id, all_title_event_code, titles_dict = encode_title(train, test, train_labels, titles_dict)
     # tranform function to get the train and test set
-    reduce_train, reduce_test, categoricals = get_train_and_test(train, test, titles_dict)
+    categoricals = ['session_title']
+    reduce_path = '../data-science-bowl-2019/features/'
+    # import pdb;pdb.set_trace()
+    if 'reduce_train.csv' in os.listdir(reduce_path):
+        
+        reduce_train = pd.read_csv(reduce_path + 'reduce_train.csv')
+        reduce_test =  pd.read_csv(reduce_path + 'reduce_test.csv')
+    else:
+        reduce_train, reduce_test = get_train_and_test(train, test, titles_dict)    
+        reduce_train.to_csv(reduce_path+'reduce_train.csv', index=False)
+        reduce_test.to_csv(reduce_path+'reduce_test.csv', index=False)
+
+    from pipelines import *
+    # reduce_train, reduce_test = get_train_and_test(train, test, titles_dict)    
+    # reduce_train.to_csv(reduce_path+'reduce_train.csv', index=False)
+    # reduce_test.to_csv(reduce_path+'reduce_test.csv', index=False)
+
+    # import pdb; pdb.set_trace()
+    # call feature engineering function
+    reduce_train, reduce_test, features = preprocess(reduce_train, reduce_test)
+    y = reduce_train['accuracy_group']
+
+    cols_to_drop = ['game_session', 'installation_id', 'timestamp', 'accuracy_group', 'timestampDate']
+            
+    n_fold = 5
+    folds = GroupKFold(n_splits=n_fold)
+    gc.collect()
+    init_points = 16
+    n_iter = 16
+    bounds_LGB = {
+    'max_depth': (8, 11),
+    'lambda_l1': (0, 5),
+    'lambda_l2': (0, 5),
+    'bagging_fraction': (0.4, 0.6),
+    'bagging_freq': (1, 10),
+    'colsample_bytree': (0.4, 0.6),
+    'learning_rate': (0.05, 0.1)
+    }
+    #2^max_depth > num_leaves
+
+    LGB_BO = BayesianOptimization(LGB_bayesian, bounds_LGB, random_state=1029)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore')
+        LGB_BO.maximize(init_points=init_points, n_iter=n_iter, acq='ucb', xi=0.0, alpha=1e-6)
+    
+    params = {
+    'boosting_type': 'gbdt',
+    'metric': 'rmse',
+    'objective': 'regression',
+    'eval_metric': 'cappa',
+    'n_jobs': -1,
+    'seed': 42,
+    'early_stopping_rounds': 100,
+    'n_estimators': 2000,
+    'learning_rate': LGB_BO.max['params']['learning_rate'],
+    'max_depth': int(LGB_BO.max['params']['max_depth']),
+    'lambda_l1': LGB_BO.max['params']['lambda_l1'],
+    'lambda_l2': LGB_BO.max['params']['lambda_l2'],
+    'bagging_fraction': LGB_BO.max['params']['bagging_fraction'],
+    'bagging_freq': int(LGB_BO.max['params']['bagging_freq']),
+    'colsample_bytree': LGB_BO.max['params']['colsample_bytree'],
+    'verbose': 100
+    }
+
+    mt = MainTransformer()
+    ft = FeatureTransformer()
+    transformers = {'ft': ft}
+    regressor_model = RegressorModel(model_wrapper=LGBWrapper_regr())
+    regressor_model.fit(X=reduce_train, 
+                        y=y, 
+                        folds=folds, 
+                        params=params, 
+                        preprocesser=mt, 
+                        transformers=transformers,
+                        eval_metric='cappa', 
+                        cols_to_drop=cols_to_drop)
+
+    preds_train_1 = regressor_model.predict(reduce_train)
+    preds_1 = regressor_model.predict(reduce_test)
+    w_1 = LGB_BO.max['target']
+    del bounds_LGB, LGB_BO, params, mt, ft, transformers, regressor_model
+    gc.collect()
+    bounds_LGB = {
+    'max_depth': (11, 14),
+    'lambda_l1': (0, 10),
+    'lambda_l2': (0, 10),
+    'bagging_fraction': (0.7, 1),
+    'bagging_freq': (1, 10),
+    'colsample_bytree': (0.7, 1),
+    'learning_rate': (0.08, 0.2)
+    }
+
+    LGB_BO = BayesianOptimization(LGB_bayesian, bounds_LGB, random_state=1030)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore')
+        LGB_BO.maximize(init_points=init_points, n_iter=n_iter, acq='ucb', xi=0.0, alpha=1e-6)
+    params = {
+    'boosting_type': 'gbdt',
+    'metric': 'rmse',
+    'objective': 'regression',
+    'eval_metric': 'cappa',
+    'n_jobs': -1,
+    'seed': 42,
+    'early_stopping_rounds': 100,
+    'n_estimators': 2000,
+    'learning_rate': LGB_BO.max['params']['learning_rate'],
+    'max_depth': int(LGB_BO.max['params']['max_depth']),
+    'lambda_l1': LGB_BO.max['params']['lambda_l1'],
+    'lambda_l2': LGB_BO.max['params']['lambda_l2'],
+    'bagging_fraction': LGB_BO.max['params']['bagging_fraction'],
+    'bagging_freq': int(LGB_BO.max['params']['bagging_freq']),
+    'colsample_bytree': LGB_BO.max['params']['colsample_bytree'],
+    'verbose': 100
+}
+
+    mt = MainTransformer()
+    ft = FeatureTransformer()
+    transformers = {'ft': ft}
+    regressor_model = RegressorModel(model_wrapper=LGBWrapper_regr())
+    regressor_model.fit(X=reduce_train, 
+                        y=y, 
+                        folds=folds, 
+                        params=params, 
+                        preprocesser=mt, 
+                        transformers=transformers,
+                        eval_metric='cappa', 
+                        cols_to_drop=cols_to_drop)
+
+    preds_train_2 = regressor_model.predict(reduce_train)
+    preds_2 = regressor_model.predict(reduce_test)
+    w_2 = LGB_BO.max['target']
+    del bounds_LGB, LGB_BO, params, mt, ft, transformers, regressor_model
+    gc.collect()
+    preds = (w_1/(w_1+w_2)) * preds_1 + (w_2/(w_1+w_2)) * preds_2
+
+    del preds_1, preds_2
+    gc.collect()
+    coefficients = [1.12232214, 1.73925866, 2.22506454]
+    preds[preds <= coefficients[0]] = 0
+    preds[np.where(np.logical_and(preds > coefficients[0], preds <= coefficients[1]))] = 1
+    preds[np.where(np.logical_and(preds > coefficients[1], preds <= coefficients[2]))] = 2
+    preds[preds > coefficients[2]] = 3
+    sample_submission['accuracy_group'] = preds.astype(int)
+    sample_submission.to_csv('submission.csv', index=False)
+    sample_submission['accuracy_group'].value_counts(normalize=True)
