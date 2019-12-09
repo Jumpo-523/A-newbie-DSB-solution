@@ -202,7 +202,8 @@ def get_data(user_sample, titles_dict, test_set=False):
     counter = 0
     time_first_activity = float(user_sample['timestamp'].values[0])
     durations = []
-    last_accuracy_title = {'acc_' + title: -1 for title in assess_titles}
+    # last_accuracy_title入れたっけ？
+    last_accuracy_title = {'acc_' + title: -10 for title in assess_titles}
     event_code_count: Dict[str, int] = {ev: 0 for ev in list_of_event_code}
     event_id_count: Dict[str, int] = {eve: 0 for eve in list_of_event_id}
     title_count: Dict[str, int] = {eve: 0 for eve in activities_labels.values()}
@@ -212,6 +213,11 @@ def get_data(user_sample, titles_dict, test_set=False):
     gameActivityScores = {'score_title_' + str(ga_title): 0 for ga_title in titles_dict.keys()}
     
 
+    # length, size, weightに関連するactivity数を形状する。
+    activity_type = {'length':0, 'size':0, 'weight':0}
+    
+    # size/length/weight columnsを作成
+    # Constants.Assessment_category    
 
     # itarates through each session of one instalation_id
     for i, session in user_sample.groupby('game_session', sort=False):
@@ -222,8 +228,9 @@ def get_data(user_sample, titles_dict, test_set=False):
         session_type = session['type'].iloc[0]
         session_title = session['title'].iloc[0]
         session_title_text = activities_labels[session_title]
+
         # import pdb;pdb.set_trace()
-        if gameActivityScores.get('score_title_' + str(session_title))==0:
+        if gameActivityScores.get('score_title_' + str(session_title)) is not None:
             # import pdb;pdb.set_trace()
             score_ = each_game_and_activity_score(titles_dict, session)
             # print(score_)
@@ -384,7 +391,6 @@ def LGB_bayesian(max_depth,
         'colsample_bytree': colsample_bytree,
         'verbose': 0
     }
-    
     mt = MainTransformer()
     ft = FeatureTransformer()
     transformers = {'ft': ft}
@@ -428,6 +434,8 @@ if __name__ == "__main__":
     # reduce_test.to_csv(reduce_path+'reduce_test.csv', index=False)
 
     # import pdb; pdb.set_trace()
+    # もしかして、数字カラムってcsv保存すると文字列になるとかある？
+
     # call feature engineering function
     reduce_train, reduce_test, features = preprocess(reduce_train, reduce_test)
     y = reduce_train['accuracy_group']
