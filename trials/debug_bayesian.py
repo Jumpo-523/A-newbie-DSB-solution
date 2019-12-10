@@ -68,6 +68,9 @@ import re
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
+
+from pipelines import *
+
 # import pdb; pdb.set_trace()
 # from commons.devtools import say_notify
 # say_notify("hogehoge")
@@ -177,8 +180,8 @@ def encode_title(train, test, train_labels, titiles_dict):
                 list_of_event_id, all_title_event_code, titles_dict
 
 
-
-def get_data(user_sample, titles_dict, test_set=False):
+# constants導入につき、titles_dict消す
+def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
     '''
     The user_sample is a DataFrame from train or test where the only one 
     installation_id is filtered
@@ -228,6 +231,7 @@ def get_data(user_sample, titles_dict, test_set=False):
         session_type = session['type'].iloc[0]
         session_title = session['title'].iloc[0]
         session_title_text = activities_labels[session_title]
+        
 
         # import pdb;pdb.set_trace()
         if gameActivityScores.get('score_title_' + str(session_title)) is not None:
@@ -235,6 +239,8 @@ def get_data(user_sample, titles_dict, test_set=False):
             score_ = each_game_and_activity_score(titles_dict, session)
             # print(score_)
             gameActivityScores['score_title_' + str(session_title)] = score_
+            # とりあえずイベントカウントで。scoreでも、duration_timeでもいい。
+            activity_type[constants.game_category[session_title_text]] += len(session) 
             
         # for each assessment, and only this kind off session, the features below are processed
         # and a register are generated
@@ -255,7 +261,8 @@ def get_data(user_sample, titles_dict, test_set=False):
             features.update(last_accuracy_title.copy())
             
             features.update(gameActivityScores.copy())
-            
+
+            features.update(activity_type.copy())
             # get installation_id for aggregated features
             features['installation_id'] = session['installation_id'].iloc[-1]
             # add title as feature, remembering that title represents the name of the game
@@ -333,14 +340,14 @@ def get_data(user_sample, titles_dict, test_set=False):
     # in the train_set, all assessments goes to the dataset
     return all_assessments
 
-def get_train_and_test(train, test, titles_dict):
+def get_train_and_test(train, test, titles_dict, constants):
     compiled_train = []
     compiled_test = []
     for i, (ins_id, user_sample) in tqdm(enumerate(train.groupby('installation_id', sort = False)), total = 17000):
-        compiled_train += get_data(user_sample, titles_dict)
+        compiled_train += get_data(user_sample, titles_dict, constants)
     for ins_id, user_sample in tqdm(test.groupby('installation_id', sort = False), total = 1000):
-        compiled_train += get_data(user_sample, titles_dict)
-        test_data = get_data(user_sample, titles_dict,test_set = True)
+        compiled_train += get_data(user_sample, titles_dict, constants)
+        test_data = get_data(user_sample, titles_dict, constants, test_set = True)
         compiled_test.append(test_data)
     reduce_train = pd.DataFrame(compiled_train)
     reduce_test = pd.DataFrame(compiled_test)
@@ -353,14 +360,16 @@ def preprocess(reduce_train, reduce_test):
         df['installation_duration_mean'] = df.groupby(['installation_id'])['duration_mean'].transform('mean')
         #df['installation_duration_std'] = df.groupby(['installation_id'])['duration_mean'].transform('std')
         df['installation_title_nunique'] = df.groupby(['installation_id'])['session_title'].transform('nunique')
-        event_codes = [str(ec) for ec in [2050, 4100, 4230, 5000, 4235, 2060, 4110, 5010, 2070, 2075, 2080, 2081, 2083, 3110, 4010, 3120, 3121, 4020, 4021, 
-                                        4022, 4025, 4030, 4031, 3010, 4035, 4040, 3020, 3021, 4045, 2000, 4050, 2010, 2020, 4070, 2025, 2030, 4080, 2035, 
-                                        2040, 4090, 4220, 4095]]
+        event_codes = [2050, 4100, 4230, 5000, 4235, 2060, 4110, 5010, 2070, 2075, 2080, 2081, 2083, 3110, 4010, 3120, 3121, 4020, 4021, 4022, 4025, 4030, 4031, 3010, 4035, 4040, 3020, 3021, 4045, 2000, 4050, 2010, 2020, 4070, 2025, 2030, 4080, 2035, 2040, 4090, 4220, 4095]
+        event_codes_str = [str(ec) for ec in event_codes]
         # df['sum_event_code_count'] = df[[str(ec) for ec in event_codes ]].sum(axis = 1)
         
         # df['installation_event_code_count_mean'] = df.groupby(['installation_id'])['sum_event_code_count'].transform('mean')
         #df['installation_event_code_count_std'] = df.groupby(['installation_id'])['sum_event_code_count'].transform('std')
-        df.drop(columns=event_codes, inplace=True)
+        try:
+            df.drop(columns=event_codes, inplace=True)
+        except KeyError:
+            df.drop(columns=event_codes_str, inplace=True)
     features = reduce_train.loc[(reduce_train.sum(axis=1) != 0), (reduce_train.sum(axis=0) != 0)].columns # delete useless columns
     features = [x for x in features if x not in ['accuracy_group', 'installation_id']] + ['acc_' + title for title in assess_titles]
     return reduce_train, reduce_test, features
@@ -414,21 +423,22 @@ if __name__ == "__main__":
     # get usefull dict with maping encode
     train, test, train_labels, win_code, list_of_user_activities,\
                 list_of_event_code, activities_labels, assess_titles,\
-                list_of_event_id, all_title_event_code, titles_dict = encode_title(train, test, train_labels, titles_dict)
+                list_of_event_id, all_title_event_code, titles_dict = encode_title(train, test, train_labels, Constants.titles_dict)
+    constants = Constants(activities_labels)
+    
     # tranform function to get the train and test set
     categoricals = ['session_title']
     reduce_path = '../data-science-bowl-2019/features/'
     # import pdb;pdb.set_trace()
-    if 'reduce_train.csv' in os.listdir(reduce_path):
-        
-        reduce_train = pd.read_csv(reduce_path + 'reduce_train.csv')
-        reduce_test =  pd.read_csv(reduce_path + 'reduce_test.csv')
+    data_version = "_"
+    if f'reduce_train{data_version}.csv' in os.listdir(reduce_path):
+        reduce_train = pd.read_csv(reduce_path + f'reduce_train{data_version}.csv')
+        reduce_test =  pd.read_csv(reduce_path + f'reduce_test{data_version}.csv')
     else:
-        reduce_train, reduce_test = get_train_and_test(train, test, titles_dict)    
-        reduce_train.to_csv(reduce_path+'reduce_train.csv', index=False)
-        reduce_test.to_csv(reduce_path+'reduce_test.csv', index=False)
+        reduce_train, reduce_test = get_train_and_test(train, test, titles_dict, constants)    
+        reduce_train.to_csv(reduce_path+f'reduce_train{data_version}.csv', index=False)
+        reduce_test.to_csv(reduce_path+f'reduce_test{data_version}.csv', index=False)
 
-    from pipelines import *
     # reduce_train, reduce_test = get_train_and_test(train, test, titles_dict)    
     # reduce_train.to_csv(reduce_path+'reduce_train.csv', index=False)
     # reduce_test.to_csv(reduce_path+'reduce_test.csv', index=False)
