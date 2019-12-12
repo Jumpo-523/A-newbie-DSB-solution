@@ -75,26 +75,6 @@ from pipelines import *
 # from commons.devtools import say_notify
 # say_notify("hogehoge")
 
-titles_dict = {'Dino Drink':{"good":'"correct":true',"bad":'"correct":false'},
-'Watering Hole (Activity)':{"good":'"filled":true', "bad":'"filled":false'},
-'All Star Sorting':{"good":'"correct":true',"bad":'"correct":false'},
-'Air Show':{"good":'"correct":true',"bad":'"correct":false'},
-'Crystals Rule':{"good":'"correct":true',"bad":'"correct":false'},
-'Bubble Bath':{"good":'"correct":true',"bad":'"correct":false'},
-'Bottle Filler (Activity)':{"good":["wowSoCool","niceJob","ohWow"]},
-'Dino Dive':{"good":'"correct":true',"bad":'"correct":false'},
-'Happy Camel':{"good":'"correct":true',"bad":'"correct":false'},
-'Pan Balance':{"good":'"correct":true',"bad":'"correct":false'},
-'Egg Dropper (Activity)':{"bad":"Buddy_EggsWentToOtherNest", "good":"Buddy_Incoming"},
-'Leaf Leader':{"good":'"correct":true',"bad":'"correct":false'},
-'Sandcastle Builder (Activity)':{"good":["So cool!", 'Great job! You did it!'],"bad":'need'},
-'Scrub-A-Dub':{"good":'"correct":true',"bad":'"correct":false'},
-'Chow Time':{"good":'"correct":true',"bad":'"correct":false'},
-# not yet to be doneつか完全に遊ぶやつ
-'Fireworks (Activity)':4000,
-'Flower Waterer (Activity)':4000,
-'Bug Measurer (Activity)':4000,
- 'Chicken Balancer (Activity)':4000}# measure使ったかいなかで測ろう．
 
 def each_game_and_activity_score(titles_dict, session):
     session_title = session['title'].iloc[0]
@@ -138,46 +118,46 @@ def read_data():
     print('Sample_submission.csv file have {} rows and {} columns'.format(sample_submission.shape[0], sample_submission.shape[1]))
     return train, test, train_labels, specs, sample_submission
 
-def encode_title(train, test, train_labels, titiles_dict):
+def encode_title(train, test, train_labels):
     # encode title
-    train['title_event_code'] = list(map(lambda x, y: str(x) + '_' + str(y), train['title'], train['event_code']))
-    test['title_event_code'] = list(map(lambda x, y: str(x) + '_' + str(y), test['title'], test['event_code']))
-    all_title_event_code = list(set(train["title_event_code"].unique()).union(test["title_event_code"].unique()))
+    # train['title_event_code'] = list(map(lambda x, y: str(x) + '_' + str(y), train['title'], train['event_code']))
+    # test['title_event_code'] = list(map(lambda x, y: str(x) + '_' + str(y), test['title'], test['event_code']))
+    # all_title_event_code = list(set(train["title_event_code"].unique()).union(test["title_event_code"].unique()))
     # make a list with all the unique 'titles' from the train and test set
     list_of_user_activities = list(set(train['title'].unique()).union(set(test['title'].unique())))
     # make a list with all the unique 'event_code' from the train and test set
-    list_of_event_code = list(set(train['event_code'].unique()).union(set(test['event_code'].unique())))
-    list_of_event_id = list(set(train['event_id'].unique()).union(set(test['event_id'].unique())))
+    # list_of_event_code = list(set(train['event_code'].unique()).union(set(test['event_code'].unique())))
+    # list_of_event_id = list(set(train['event_id'].unique()).union(set(test['event_id'].unique())))
     # make a list with all the unique worlds from the train and test set
-    list_of_worlds = list(set(train['world'].unique()).union(set(test['world'].unique())))
+    # list_of_worlds = list(set(train['world'].unique()).union(set(test['world'].unique())))
     # create a dictionary numerating the titles
     activities_map = dict(zip(list_of_user_activities, np.arange(len(list_of_user_activities))))
     activities_labels = dict(zip(np.arange(len(list_of_user_activities)), list_of_user_activities))
-    activities_world = dict(zip(list_of_worlds, np.arange(len(list_of_worlds))))
+    # activities_world = dict(zip(list_of_worlds, np.arange(len(list_of_worlds))))
     assess_titles = list(set(train[train['type'] == 'Assessment']['title'].value_counts().index).union(set(test[test['type'] == 'Assessment']['title'].value_counts().index)))
 
-    # indexEncoding to titles_dict
-    origin_GameAndAct_titles = list(titles_dict.keys()).copy()
-    for key in origin_GameAndAct_titles:
-        titles_dict[activities_map[key]] = titles_dict.pop(key)
+    # # indexEncoding to titles_dict
+    # origin_GameAndAct_titles = list(titles_dict.keys()).copy()
+    # for key in origin_GameAndAct_titles:
+    #     titles_dict[activities_map[key]] = titles_dict.pop(key)
 
     # replace the text titles with the number titles from the dict
-    train['title'] = train['title'].map(activities_map)
-    test['title'] = test['title'].map(activities_map)
-    train['world'] = train['world'].map(activities_world)
-    test['world'] = test['world'].map(activities_world)
-    train_labels['title'] = train_labels['title'].map(activities_map)
-    win_code = dict(zip(activities_map.values(), (4100*np.ones(len(activities_map))).astype('int')))
+    # train['title'] = train['title'].map(activities_map)
+    # test['title'] = test['title'].map(activities_map)
+    # train['world'] = train['world'].map(activities_world)
+    # test['world'] = test['world'].map(activities_world)
+    # train_labels['title'] = train_labels['title'].map(activities_map)
+    win_code = dict(zip(list_of_user_activities, (4100*np.ones(len(list_of_user_activities))).astype('int')))
     # then, it set one element, the 'Bird Measurer (Assessment)' as 4110, 10 more than the rest
-    win_code[activities_map['Bird Measurer (Assessment)']] = 4110
+    win_code['Bird Measurer (Assessment)'] = 4110
     # convert text into datetime
     train['timestamp'] = pd.to_datetime(train['timestamp'])
     test['timestamp'] = pd.to_datetime(test['timestamp'])
+    return train, test, train_labels, win_code, list_of_user_activities, assess_titles, activities_labels, activities_map
     
-    
-    return train, test, train_labels, win_code, list_of_user_activities, \
-                list_of_event_code, activities_labels, assess_titles,\
-                list_of_event_id, all_title_event_code, titles_dict
+    # return train, test, train_labels, win_code, list_of_user_activities, \
+    #             list_of_event_code, activities_labels, assess_titles,\
+    #             list_of_event_id, all_title_event_code
 
 
 # constants導入につき、titles_dict消す
@@ -207,11 +187,12 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
     durations = []
     # last_accuracy_title入れたっけ？
     last_accuracy_title = {'acc_' + title: -10 for title in assess_titles}
-    event_code_count: Dict[str, int] = {ev: 0 for ev in list_of_event_code}
-    event_id_count: Dict[str, int] = {eve: 0 for eve in list_of_event_id}
-    title_count: Dict[str, int] = {eve: 0 for eve in activities_labels.values()}
+
+    # event_code_count: Dict[str, int] = {ev: 0 for ev in list_of_event_code}
+    # event_id_count: Dict[str, int] = {eve: 0 for eve in list_of_event_id}
+    title_count: Dict[str, int] = {eve: 0 for eve in list_of_user_activities}
     
-    title_event_code_count: Dict[str, int] = {t_eve: 0 for t_eve in all_title_event_code}
+    # title_event_code_count: Dict[str, int] = {t_eve: 0 for t_eve in all_title_event_code}
     # calculate the last score of each activity
     gameActivityScores = {'score_title_' + str(ga_title): 0 for ga_title in titles_dict.keys()}
     
@@ -219,8 +200,8 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
     # length, size, weightに関連するactivity数を形状する。
     activity_type = {'length':0, 'size':0, 'weight':0}
     
-    # size/length/weight columnsを作成
-    # Constants.Assessment_category    
+    # event_id_categorizer columnsを作成
+    classified_event_id = Classified_event_id(specs, classification_cls)
 
     # itarates through each session of one instalation_id
     for i, session in user_sample.groupby('game_session', sort=False):
@@ -230,17 +211,17 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
         # get some sessions information
         session_type = session['type'].iloc[0]
         session_title = session['title'].iloc[0]
-        session_title_text = activities_labels[session_title]
+        # session_title_text = activities_labels[session_title]
         
 
         # import pdb;pdb.set_trace()
-        if gameActivityScores.get('score_title_' + str(session_title)) is not None:
+        if gameActivityScores.get('score_title_' + session_title) is not None:
             # import pdb;pdb.set_trace()
             score_ = each_game_and_activity_score(titles_dict, session)
             # print(score_)
-            gameActivityScores['score_title_' + str(session_title)] = score_
-            # とりあえずイベントカウントで。scoreでも、duration_timeでもいい。
-            activity_type[constants.game_category[session_title_text]] += len(session) 
+            gameActivityScores['score_title_' + session_title] = score_
+            # とりあえずイベントカウントで。scoreでも、duration_timeでもいいな。
+            activity_type[constants.game_category[session_title]] += len(session) 
             
         # for each assessment, and only this kind off session, the features below are processed
         # and a register are generated
@@ -254,19 +235,20 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
             # {'Clip':0, 'Activity': 0, 'Assessment': 0, 'Game':0}
             features = user_activities_count.copy()
             features.update(last_accuracy_title.copy())
-            features.update(event_code_count.copy())
-            features.update(event_id_count.copy())
+            # features.update(event_code_count.copy())
+            # features.update(event_id_count.copy())
             features.update(title_count.copy())
             # features.update(title_event_code_count.copy())
             features.update(last_accuracy_title.copy())
             
             features.update(gameActivityScores.copy())
-
             features.update(activity_type.copy())
+            features.update(classified_event_id.dict_cls_category.copy())
+
             # get installation_id for aggregated features
             features['installation_id'] = session['installation_id'].iloc[-1]
             # add title as feature, remembering that title represents the name of the game
-            features['session_title'] = session['title'].iloc[0]
+            features['session_title'] = activities_map[session['title'].iloc[0]]
             # the 4 lines below add the feature of the history of the trials of this player
             # this is based on the all time attempts so far, at the moment of this assessment
             features['accumulated_correct_attempts'] = accumulated_correct_attempts
@@ -283,7 +265,7 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
             features['accumulated_accuracy'] = accumulated_accuracy/counter if counter > 0 else 0
             accuracy = true_attempts/(true_attempts+false_attempts) if (true_attempts+false_attempts) != 0 else 0
             accumulated_accuracy += accuracy
-            last_accuracy_title['acc_' + session_title_text] = accuracy
+            last_accuracy_title['acc_' + session_title] = accuracy
             # a feature of the current accuracy categorized
             # it is a counter of how many times this player was in each accuracy group
             if accuracy == 0:
@@ -318,13 +300,15 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
                 num_of_session_count = Counter(session[col])
                 for k in num_of_session_count.keys():
                     x = k
-                    if col == 'title':
-                        x = activities_labels[k]
+                    # if col == 'title':
+                    #     x = activities_labels[k]
                     counter[x] += num_of_session_count[k]
                 return counter
             
-        event_code_count = update_counters(event_code_count, "event_code")
-        event_id_count = update_counters(event_id_count, "event_id")
+        # event_code_count = update_counters(event_code_count, "event_code")
+        # event_id_count = update_counters(event_id_count, "event_id")
+        classified_event_id.count_cls_cat(session)
+
         title_count = update_counters(title_count, 'title')
         # title_event_code_count = update_counters(title_event_code_count, 'title_event_code')
 
@@ -340,14 +324,14 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
     # in the train_set, all assessments goes to the dataset
     return all_assessments
 
-def get_train_and_test(train, test, titles_dict, constants):
+def get_train_and_test(train, test, constants):
     compiled_train = []
     compiled_test = []
     for i, (ins_id, user_sample) in tqdm(enumerate(train.groupby('installation_id', sort = False)), total = 17000):
-        compiled_train += get_data(user_sample, titles_dict, constants)
+        compiled_train += get_data(user_sample, constants.titles_dict, constants)
     for ins_id, user_sample in tqdm(test.groupby('installation_id', sort = False), total = 1000):
-        compiled_train += get_data(user_sample, titles_dict, constants)
-        test_data = get_data(user_sample, titles_dict, constants, test_set = True)
+        compiled_train += get_data(user_sample, constants.titles_dict, constants)
+        test_data = get_data(user_sample, constants.titles_dict, constants, test_set = True)
         compiled_test.append(test_data)
     reduce_train = pd.DataFrame(compiled_train)
     reduce_test = pd.DataFrame(compiled_test)
@@ -366,10 +350,10 @@ def preprocess(reduce_train, reduce_test):
         
         # df['installation_event_code_count_mean'] = df.groupby(['installation_id'])['sum_event_code_count'].transform('mean')
         #df['installation_event_code_count_std'] = df.groupby(['installation_id'])['sum_event_code_count'].transform('std')
-        try:
-            df.drop(columns=event_codes, inplace=True)
-        except KeyError:
-            df.drop(columns=event_codes_str, inplace=True)
+        # try:
+        #     df.drop(columns=event_codes, inplace=True)
+        # except KeyError:
+        #     df.drop(columns=event_codes_str, inplace=True)
     features = reduce_train.loc[(reduce_train.sum(axis=1) != 0), (reduce_train.sum(axis=0) != 0)].columns # delete useless columns
     features = [x for x in features if x not in ['accuracy_group', 'installation_id']] + ['acc_' + title for title in assess_titles]
     return reduce_train, reduce_test, features
@@ -421,21 +405,23 @@ if __name__ == "__main__":
 
     train, test, train_labels, specs, sample_submission = read_data()
     # get usefull dict with maping encode
-    train, test, train_labels, win_code, list_of_user_activities,\
-                list_of_event_code, activities_labels, assess_titles,\
-                list_of_event_id, all_title_event_code, titles_dict = encode_title(train, test, train_labels, Constants.titles_dict)
+    # train, test, train_labels, win_code, list_of_user_activities,\
+    #             list_of_event_code, activities_labels, assess_titles,\
+    #             list_of_event_id, all_title_event_code, titles_dict = encode_title(train, test, train_labels)
+    train, test, train_labels, win_code, list_of_user_activities, assess_titles, activities_labels, activities_map = encode_title(train, test, train_labels)
     constants = Constants(activities_labels)
-    
+    classification_cls = eda_event_data(specs)
+    [classification_cls.label_event_id(st) for st in constants.eventIdCategorizer]
     # tranform function to get the train and test set
     categoricals = ['session_title']
     reduce_path = '../data-science-bowl-2019/features/'
     # import pdb;pdb.set_trace()
-    data_version = "_"
+    data_version = "_deployed"
     if f'reduce_train{data_version}.csv' in os.listdir(reduce_path):
         reduce_train = pd.read_csv(reduce_path + f'reduce_train{data_version}.csv')
         reduce_test =  pd.read_csv(reduce_path + f'reduce_test{data_version}.csv')
     else:
-        reduce_train, reduce_test = get_train_and_test(train, test, titles_dict, constants)    
+        reduce_train, reduce_test = get_train_and_test(train, test, constants)    
         reduce_train.to_csv(reduce_path+f'reduce_train{data_version}.csv', index=False)
         reduce_test.to_csv(reduce_path+f'reduce_test{data_version}.csv', index=False)
 
