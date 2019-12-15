@@ -257,7 +257,7 @@ class LGBWrapper_regr(object):
     def fit(self, X_train, y_train, X_valid=None, y_valid=None, X_holdout=None, y_holdout=None, params=None):
         if params['objective'] == 'regression':
             eval_metric = "rmse"
-            eval_metric = eval_qwk_lgb
+            # eval_metric = eval_qwk_lgb
         else:
             eval_metric = 'auc'
 

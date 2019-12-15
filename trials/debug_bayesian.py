@@ -198,6 +198,7 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
     
 
     # length, size, weightに関連するactivity数を形状する。
+    # activity数じゃないもっと目的に沿った指標を生成したい。
     activity_type = {'length':0, 'size':0, 'weight':0}
     
     # event_id_categorizer columnsを作成
@@ -214,14 +215,15 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
         # session_title_text = activities_labels[session_title]
         
 
-        # import pdb;pdb.set_trace()
+        
         if gameActivityScores.get('score_title_' + session_title) is not None:
+            
             # import pdb;pdb.set_trace()
             score_ = each_game_and_activity_score(titles_dict, session)
             # print(score_)
             gameActivityScores['score_title_' + session_title] = score_
             # とりあえずイベントカウントで。scoreでも、duration_timeでもいいな。
-            activity_type[constants.game_category[session_title]] += len(session) 
+            activity_type[constants.game_category[session_title]] += session.game_time.max()
             
         # for each assessment, and only this kind off session, the features below are processed
         # and a register are generated
@@ -340,10 +342,10 @@ def get_train_and_test(train, test, constants):
 
 def preprocess(reduce_train, reduce_test):
     for df in [reduce_train, reduce_test]:
-        df['installation_session_count'] = df.groupby(['installation_id'])['Clip'].transform('count')
+        # df['installation_session_count'] = df.groupby(['installation_id'])['Clip'].transform('count')
         df['installation_duration_mean'] = df.groupby(['installation_id'])['duration_mean'].transform('mean')
         #df['installation_duration_std'] = df.groupby(['installation_id'])['duration_mean'].transform('std')
-        df['installation_title_nunique'] = df.groupby(['installation_id'])['session_title'].transform('nunique')
+        # df['installation_title_nunique'] = df.groupby(['installation_id'])['session_title'].transform('nunique')
         event_codes = [2050, 4100, 4230, 5000, 4235, 2060, 4110, 5010, 2070, 2075, 2080, 2081, 2083, 3110, 4010, 3120, 3121, 4020, 4021, 4022, 4025, 4030, 4031, 3010, 4035, 4040, 3020, 3021, 4045, 2000, 4050, 2010, 2020, 4070, 2025, 2030, 4080, 2035, 2040, 4090, 4220, 4095]
         event_codes_str = [str(ec) for ec in event_codes]
         # df['sum_event_code_count'] = df[[str(ec) for ec in event_codes ]].sum(axis = 1)
@@ -364,13 +366,13 @@ def LGB_bayesian(max_depth,
                  bagging_fraction,
                  bagging_freq,
                  colsample_bytree,
-                 learning_rate):
+                 learning_rate, eval_metric='rmse'):
     
     params = {
         'boosting_type': 'gbdt',
         'metric': 'rmse',
         'objective': 'regression',
-        'eval_metric': 'cappa',
+        'eval_metric': eval_metric,
         'n_jobs': -1,
         'seed': 42,
         'early_stopping_rounds': 100,
@@ -394,7 +396,7 @@ def LGB_bayesian(max_depth,
               params=params, 
               preprocesser=mt, 
               transformers=transformers,
-              eval_metric='cappa', 
+              eval_metric=eval_metric, 
               cols_to_drop=cols_to_drop,
               plot=False)
     
@@ -416,7 +418,7 @@ if __name__ == "__main__":
     categoricals = ['session_title']
     reduce_path = '../data-science-bowl-2019/features/'
     # import pdb;pdb.set_trace()
-    data_version = "_deployed"
+    data_version = "_revised"
     if f'reduce_train{data_version}.csv' in os.listdir(reduce_path):
         reduce_train = pd.read_csv(reduce_path + f'reduce_train{data_version}.csv')
         reduce_test =  pd.read_csv(reduce_path + f'reduce_test{data_version}.csv')
@@ -464,7 +466,7 @@ if __name__ == "__main__":
     'boosting_type': 'gbdt',
     'metric': 'rmse',
     'objective': 'regression',
-    'eval_metric': 'cappa',
+    'eval_metric': 'rmse',
     'n_jobs': -1,
     'seed': 42,
     'early_stopping_rounds': 100,
@@ -489,7 +491,7 @@ if __name__ == "__main__":
                         params=params, 
                         preprocesser=mt, 
                         transformers=transformers,
-                        eval_metric='cappa', 
+                        eval_metric='rmse', 
                         cols_to_drop=cols_to_drop)
 
     preds_train_1 = regressor_model.predict(reduce_train)
@@ -541,7 +543,7 @@ if __name__ == "__main__":
                         params=params, 
                         preprocesser=mt, 
                         transformers=transformers,
-                        eval_metric='cappa', 
+                        eval_metric='rmse', 
                         cols_to_drop=cols_to_drop)
 
     preds_train_2 = regressor_model.predict(reduce_train)
