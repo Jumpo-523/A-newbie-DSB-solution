@@ -13,6 +13,15 @@
     特徴量重要度を必ず取ってきて→標準偏差・平均を取りたい。
     - transformer過学習起こしうるからやめたい。importancetop層いない。（出現回数少ないからかも。）
 
+
+What I learnt from this competition.
+
+- groupby Obj 's transformer method
+- HTTPErrorの処理
+    - urllib.requests.HTTPERRORだとキャッチできない。
+    - request.exceptions.HTTPERROR
+    - job's APIが利用しているモジュールに合わせないとキャッチできない。
+
 IF log
 成功:job_type:(run_id, output_path)
 失敗:job_type:(run_id, None)

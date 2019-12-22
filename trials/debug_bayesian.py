@@ -174,7 +174,7 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
     user_activities_count = {'Clip':0, 'Activity': 0, 'Assessment': 0, 'Game':0}
     
     # new features: time spent in each activity
-    last_session_time_sec = 0
+    days_counts = {"day":None, "count":0}
     accuracy_groups = {0:0, 1:0, 2:0, 3:0}
     all_assessments = []
     accumulated_accuracy_group = 0
@@ -209,6 +209,11 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
         # i = game_session_id
         # session is a DataFrame that contain only one game_session
         
+        if days_counts["day"] == session.timestamp.dt.date.iloc[0]:
+            pass
+        else:
+            days_counts.update({"day":session.timestamp.dt.date.iloc[0]})
+            days_counts["count"] += 1
         # get some sessions information
         session_type = session['type'].iloc[0]
         session_title = session['title'].iloc[0]
@@ -241,7 +246,8 @@ def get_data(user_sample, titles_dict, constants:Constants, test_set=False):
             # features.update(event_id_count.copy())
             features.update(title_count.copy())
             # features.update(title_event_code_count.copy())
-            features.update(last_accuracy_title.copy())
+            copied_days_count = days_counts.copy()
+            features.update({"days_count":copied_days_count["count"]})
             
             features.update(gameActivityScores.copy())
             features.update(activity_type.copy())
@@ -418,7 +424,7 @@ if __name__ == "__main__":
     categoricals = ['session_title']
     reduce_path = '../data-science-bowl-2019/features/'
     # import pdb;pdb.set_trace()
-    data_version = "_revised"
+    data_version = "_days_counts"
     if f'reduce_train{data_version}.csv' in os.listdir(reduce_path):
         reduce_train = pd.read_csv(reduce_path + f'reduce_train{data_version}.csv')
         reduce_test =  pd.read_csv(reduce_path + f'reduce_test{data_version}.csv')
