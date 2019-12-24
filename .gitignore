@@ -6,4 +6,3 @@ data-science-bowl-2019
 /trials/*
 !/trials/debug_bayesian.py
 !/trials/pipelines.py
-/commons/*
