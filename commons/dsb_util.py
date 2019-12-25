@@ -207,7 +207,6 @@ def get_data(user_sample, constants:Constants, test_set=False):
     # calculate the last score of each activity
     gameActivityScores = {'score_title_' + str(ga_title): 0 for ga_title in constants.titles_dict.keys()}
 
-
     # length, size, weightに関連するactivity数を形状する。
     # activity数じゃないもっと目的に沿った指標を生成したい。
     activity_type = {'length':0, 'size':0, 'weight':0}
@@ -220,7 +219,16 @@ def get_data(user_sample, constants:Constants, test_set=False):
         # get some sessions information
         session_type = session['type'].iloc[0]
         session_title = session['title'].iloc[0]
-        session_title_text = constants.activities_labels[session_title]            
+        session_title_text = constants.activities_labels[session_title]         
+   
+        # if gameActivityScores.get('score_title_' + session_title) is not None:
+        if constants.game_category.get(session_title_text) is not None:
+            # import pdb;pdb.set_trace()
+            # score_ = each_game_and_activity_score(titles_dict, session)
+            # print(score_)
+            # gameActivityScores['score_title_' + session_title] = score_
+            # とりあえずイベントカウントで。scoreでも、duration_timeでもいいな。
+            activity_type[constants.game_category[session_title_text]] += session.game_time.max()
 
         # for each assessment, and only this kind off session, the features below are processed
         # and a register are generated

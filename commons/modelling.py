@@ -189,11 +189,10 @@ def run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params):
         oof_pred[val_ind] = model.predict(x_val)
         
         y_pred += model.predict(reduce_test[usefull_features]) / kf.n_splits
-        
     # calculate loss
     loss_score = metrics.cohen_kappa_score(reduce_train[target], get_label(y=reduce_train[target], y_pred=oof_pred), weights = 'quadratic')
     print('Our oof cohen kappa score is :', loss_score)
-    return y_pred
+    return y_pred, oof_pred
 
 def run_lgb_bayesian(num_leaves, max_depth, lambda_l1, lambda_l2, bagging_fraction, bagging_freq, colsample_bytree, learning_rate):
     

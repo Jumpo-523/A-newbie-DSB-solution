@@ -118,8 +118,40 @@ if __name__ == "__main__":
     'bagging_fraction': 0.9,
     'verbose': 100
     }
+    params =  {'num_leaves': 61,  # 当前base 61
+           'min_child_weight': 0.03454472573214212,
+           'feature_fraction': 0.3797454081646243,
+           'bagging_fraction': 0.4181193142567742,
+           'min_data_in_leaf': 96,  # 当前base 106
+           'objective': 'regression',
+           "metric": 'rmse',
+           'max_depth': -1,
+           'learning_rate': 0.1,   # 快速验证
+    #      'learning_rate': 0.006883242363721497,
+           "boosting_type": "gbdt",
+           "bagging_seed": 11,
+           "verbosity": -1,
+           'reg_alpha': 0.3899927210061127,
+           'reg_lambda': 0.6485237330340494,
+           'random_state': 47,
+           'num_threads': 16,
+           'lambda_l1': 1,  
+           'lambda_l2': 1
+    #      'is_unbalance':True
+             }
     category_cals = ['session_title']
-    run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
+    y_pred, oof_pred = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
+    # reduce_train['1st_stacking'] = oof_pred
+    # reduce_test['1st_stacking'] = y_pred
+    # import pdb; pdb.set_trace()
+    # y_pred, oof_pred = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
+    # 1st 0.5613486386645519
+
+
+
+
+
+
 
     
 
