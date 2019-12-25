@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm_notebook, tqdm
 import re
+from .new_features import learningRoute
 
 
 class Constants(object):
@@ -40,6 +41,10 @@ class Constants(object):
     'Flower Waterer (Activity)':4000,
     'Bug Measurer (Activity)':4000,
     'Chicken Balancer (Activity)':4000}
+
+    categorical_features = ['session_title']
+    target_variable = 'accuracy_group'
+
     def __init__(self, maps:dict):
         # import pdb; pdb.set_trace()
         self._set_attr(maps_data=maps)
@@ -166,7 +171,8 @@ def encode_title(train, test, train_labels):
 
     maps_data = {"activities_map": activities_map, 'assess_titles': assess_titles,"list_of_user_activities":list_of_user_activities,
                 'list_of_event_code':list_of_event_code, 'list_of_event_id':list_of_event_id, 'all_title_event_code': all_title_event_code,
-                'activities_labels':activities_labels, 'activities_world':activities_world, "win_code":win_code}
+                'activities_labels':activities_labels, 'activities_world':activities_world, 
+                'activities_world_labels':activities_world_labels, "win_code":win_code}
     return train, test, train_labels, maps_data 
 
 
@@ -210,17 +216,19 @@ def get_data(user_sample, constants:Constants, test_set=False):
     # length, size, weightに関連するactivity数を形状する。
     # activity数じゃないもっと目的に沿った指標を生成したい。
     activity_type = {'length':0, 'size':0, 'weight':0}
-    
+    check_routes = learningRoute()._set_dict()
+
     # itarates through each session of one instalation_id
     for i, session in user_sample.groupby('game_session', sort=False):
         # i = game_session_id
         # session is a DataFrame that contain only one game_session
-
         # get some sessions information
         session_type = session['type'].iloc[0]
         session_title = session['title'].iloc[0]
         session_title_text = constants.activities_labels[session_title]         
-   
+        session_world = session['world'].iloc[0]
+        check_routes.record_experiences(title_text=session_title_text,
+                           world_text=constants.activities_world_labels[session_world])
         # if gameActivityScores.get('score_title_' + session_title) is not None:
         if constants.game_category.get(session_title_text) is not None:
             # import pdb;pdb.set_trace()
@@ -232,7 +240,10 @@ def get_data(user_sample, constants:Constants, test_set=False):
 
         # for each assessment, and only this kind off session, the features below are processed
         # and a register are generated
-        if (session_type == 'Assessment') & (test_set or len(session)>1):            
+        if (session_type == 'Assessment') & (test_set or len(session)>1):
+            on_route_values = check_routes.is_on_appropriate_route(world_text=constants.activities_world_labels[session_world],
+                                                 Asessment_text=session_title_text)
+            
             # import pdb; pdb.set_trace()
             # search for event_code 4100, that represents the assessments trial
             all_attempts = session.query(f'event_code == {constants.win_code[constants.activities_labels[session_title]]}')
@@ -250,6 +261,7 @@ def get_data(user_sample, constants:Constants, test_set=False):
             
             features.update(gameActivityScores.copy())
             features.update(activity_type.copy())
+            features.update({"on_route":on_route_values})
 
             # get installation_id for aggregated features
             features['installation_id'] = session['installation_id'].iloc[-1]
@@ -343,7 +355,6 @@ def get_train_and_test(train, test, constants):
     return reduce_train, reduce_test
 
 
-
 def preprocess(reduce_train, reduce_test, constants:Constants):
     for df in [reduce_train, reduce_test]:
         # df['installation_session_count'] = df.groupby(['installation_id'])['Clip'].transform('count')
@@ -360,8 +371,18 @@ def preprocess(reduce_train, reduce_test, constants:Constants):
         #     df.drop(columns=event_codes, inplace=True)
         # except KeyError:
         #     df.drop(columns=event_codes_str, inplace=True)
+        
+        # reduce_train = target_encoder(reduce_train, constants.target_variable, constants.categorical_features)
+        
     features = reduce_train.loc[(reduce_train.sum(axis=1) != 0), (reduce_train.sum(axis=0) != 0)].columns # delete useless columns
     features = [x for x in features if x not in ['accuracy_group', 'installation_id']] + ['acc_' + title for title in constants.assess_titles]
     return reduce_train, reduce_test, features
 
 
+def target_encoder(reduce_train, target_variable, categorical_features):
+    for cat in categorical_features:
+            dic_ = reduce_train.groupby(by=cat).agg({target_variable:"mean"}).to_dict()[target_variable]
+            print(dic_)
+            # int 64にfloatブッ込めないよね。
+            reduce_train[cat].replace(dic_, inplace=True)
+    return  reduce_train

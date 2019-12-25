@@ -140,12 +140,15 @@ if __name__ == "__main__":
     #      'is_unbalance':True
              }
     category_cals = ['session_title']
-    y_pred, oof_pred = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
+    y_pred, oof_pred, importances = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
     # reduce_train['1st_stacking'] = oof_pred
     # reduce_test['1st_stacking'] = y_pred
     # import pdb; pdb.set_trace()
+    run_lgb_wrapper(reduce_train, reduce_test, cols_to_drop, category_cals, params)
     # y_pred, oof_pred = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
     # 1st 0.5613486386645519
+    # seed averagingすごい聞くことがわかった。 12/25
+
 
 
 

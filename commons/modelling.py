@@ -174,7 +174,7 @@ def run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params):
     target = 'accuracy_group'
     oof_pred = np.zeros(len(reduce_train))
     y_pred = np.zeros(len(reduce_test))
-
+    importances = []
     # train a baseline model and record the cohen cappa score as our best score
     for fold, (tr_ind, val_ind) in enumerate(kf.split(reduce_train, groups = reduce_train['installation_id'])):
         print('Fold {}'.format(fold + 1))
@@ -187,12 +187,33 @@ def run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params):
                          valid_sets = [train_set, val_set], verbose_eval = 100, feval = cohen_kappa)
         
         oof_pred[val_ind] = model.predict(x_val)
-        
+        imp_df = pd.DataFrame({'importance':model.feature_importance(),'name':model.feature_name()})
+        importances.append(imp_df)
         y_pred += model.predict(reduce_test[usefull_features]) / kf.n_splits
     # calculate loss
     loss_score = metrics.cohen_kappa_score(reduce_train[target], get_label(y=reduce_train[target], y_pred=oof_pred), weights = 'quadratic')
     print('Our oof cohen kappa score is :', loss_score)
-    return y_pred, oof_pred
+    return y_pred, oof_pred, importances
+
+
+def run_lgb_wrapper(reduce_train, reduce_test, cols_to_drop, category_cals, params, n_seeds=20):
+    '''bagging_seedを変えてseed_averagingを実施する'''
+    oof_pred = np.zeros(len(reduce_train))
+    y_pred = np.zeros(len(reduce_test))
+    target = 'accuracy_group'
+    importances = []
+    for i in range(n_seeds):
+        params.update({'random_state':i})
+        y_pred_, oof_pred_, importances_ = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
+        mean_importances = pd.concat(importances_, axis=0).groupby(by='name', as_index=False).mean()
+        importances.append(mean_importances)
+        y_pred += y_pred_/n_seeds
+        oof_pred += oof_pred_/n_seeds
+    loss_score = metrics.cohen_kappa_score(reduce_train[target], get_label(y=reduce_train[target], y_pred=oof_pred), weights = 'quadratic')
+    print('Our oof cohen kappa score is :', loss_score)
+
+
+
 
 def run_lgb_bayesian(num_leaves, max_depth, lambda_l1, lambda_l2, bagging_fraction, bagging_freq, colsample_bytree, learning_rate):
     
