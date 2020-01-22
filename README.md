@@ -14,6 +14,38 @@
     - transformer過学習起こしうるからやめたい。importancetop層いない。（出現回数少ないからかも。）
 
 
+- 1/1
+    - level毎になんのゲームを経験したか（＝game_session_count）を特徴量に加える。
+    - 望ましいルートか否かの指標の追加
+    [TBD]
+    0 or Otherの識別はうまく行っている印象がある。
+    単純なイージーミスが多いか否かの識別をどうするべきか？
+        特徴量の選定をすべき
+        countではなく、割合もしくはtime
+    - 4●系のactivityをちゃんとやっているか？（event_dataの詳細を追う）
+        - 4000系であればなんでもいい
+        - session_count数ではなく、割合に変える必要がある。
+- 1/3
+    - stackingするタイミングをcross validation内部にセット
+    - n_seeds = 10でセットしてやっているが、同じことを10回ループしているだけになっている。
+    - Lightgbmのrandom_seed引数について調べる。
+    - <font color="red">confusion_matrixを出力する</font>
+        できていない
+    - lightgbmの挙動がkernel環境で異なる。
+        - versionの違いだろう：欠損したカラムがあるorカラムネームに空白文字があるケースを許容しなくなったと思われる
+    - 説明をちゃんと聞く子か否かは取れるか？
+
+- 1/5 division by total_countをやるべきでは？ (discussionから)
+
+
+
+
+- 反省点
+    - distributionをチェックして、標準化すべきかいなかなどの考察を怠った（カーネルで判断してしまった。）
+    - インターネット契約していない家なので、平日は何にもできないという不利さはあった。
+    - 環境が結局汚くなってしまう。オレオレパイプラインを作成する
+    - 結局物作りの方が好きかもしれない自分がいる。
+    - システム作っている方が、生きている気がする。
 What I learnt from this competition.
 
 - groupby Obj 's transformer method
@@ -22,21 +54,6 @@ What I learnt from this competition.
     - request.exceptions.HTTPERROR
     - job's APIが利用しているモジュールに合わせないとキャッチできない。
 
-IF log
-成功:job_type:(run_id, output_path)
-失敗:job_type:(run_id, None)
-input(Global_dict)
-
-Miami Honor Real Slow
-
-- やること：SFTP機能の確認同格テスト設計
-
-
-SS:
-UUIDは二種類ある。
-    maid:端末ごとにふられているID（KDDIから端末情報が送られてくる/アプリによって開かれるブラウザ）
-    soc:ブラウザごとにふられているID(サイトにtagが埋め込まれていれば取得される。)
-        日によって
 
 ---
 

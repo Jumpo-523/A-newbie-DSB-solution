@@ -70,20 +70,24 @@ import argparse
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('--prepared', type=bool, nargs='?', default=False,
-                   help='if get_data() was executed, we can skip this process by setting this var True')
+    parser.add_argument('--prepared', action='store_true')
+#     parser.add_argument('--prepared', type=bool, nargs='?', default=False,
+#                    help='if get_data() was executed, we can skip this process by setting this var True')
     args = parser.parse_args()
-    
+    # "--prepared"がoptionで着いているだけでTrueに指定したい。
     # read data
 
     train, test, train_labels, specs, sample_submission = read_data()
     # get usefull dict with maping encode
     train, test, train_labels, maps_data = encode_title(train, test, train_labels)
-
-
-    constants = Constants(maps_data)
+    t_levels = Title_levels()
+    t_levels.set_titlesLevel()
+    
+    constants = Constants(maps_data, train_labels, t_levels)
     classification_cls = eda_event_data(specs)
     [classification_cls.label_event_id(st) for st in constants.eventIdCategorizer]
+    
+
     # tranform function to get the train and test set
     categoricals = ['session_title']
     reduce_path = '../data-science-bowl-2019/features/'
@@ -96,11 +100,29 @@ if __name__ == "__main__":
     reduce_train = pd.read_csv(base_path + "data-science-bowl-2019/features/reduced_train.csv")
     reduce_test = pd.read_csv(base_path + "data-science-bowl-2019/features/reduced_test.csv")
     reduce_train, reduce_test, features = preprocess(reduce_train, reduce_test, constants)
+    # import pdb; pdb.set_trace()
 
+    cols_to_drop = ['game_session', 'accuracy', 'installation_id', 'timestamp', 'accuracy_group', 'timestampDate', 'num_incorrect','num_correct']
+    features = [col for col in reduce_train.columns if col not in cols_to_drop]
+
+    to_remove = remove_correlated_features(reduce_train, features)
+    features = [col for col in features if col not in to_remove]
+    features = [col for col in features if col not in ['Heavy, Heavier, Heaviest_2000', 'Heavy, Heavier, Heaviest']]
+    print('Training with {} features'.format(len(features)))
     # titles_dict_indexed / 
-    y = reduce_train['accuracy_group']
+    target_variable = 'accuracy_group' 
+    y = reduce_train[target_variable]
+    useful_columns = []
 
-    cols_to_drop = ['game_session', 'installation_id', 'timestamp', 'accuracy_group', 'timestampDate']
+#    ここでスタッキングするとリークのもとになっているかもしれない。Validationセットのyも使っている為。
+#     fs_lasso = Feature_selection(target=target_variable, cols_to_drop=cols_to_drop, category_cols=categoricals)
+#     reduced_train_one_hot = fs_lasso.onehot_encoder(reduce_train)
+#     reduced_test_one_hot = fs_lasso.onehot_encoder(reduce_test)
+#     stacked_feature = fs_lasso.fit_transform(reduced_train_one_hot)
+#     # useful_columns = fs_lasso.get_useful_features()
+#     reduce_train['lasso_stacking'] = stacked_feature
+#     reduce_test['lasso_stacking'] = fs_lasso.predict(reduced_test_one_hot)
+    
     params = {
     'boosting_type': 'gbdt',
     'metric': 'rmse',
@@ -125,6 +147,7 @@ if __name__ == "__main__":
            'min_data_in_leaf': 96,  # 当前base 106
            'objective': 'regression',
            "metric": 'rmse',
+           'early_stopping_rounds': 100,
            'max_depth': -1,
            'learning_rate': 0.1,   # 快速验证
     #      'learning_rate': 0.006883242363721497,
@@ -139,13 +162,21 @@ if __name__ == "__main__":
            'lambda_l2': 1
     #      'is_unbalance':True
              }
-    category_cals = ['session_title']
-    y_pred, oof_pred, importances = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
+
+#     y_pred, oof_pred, importances = run_lgb(reduce_train, reduce_test, cols_to_drop, categoricals, params)
     # reduce_train['1st_stacking'] = oof_pred
     # reduce_test['1st_stacking'] = y_pred
-    # import pdb; pdb.set_trace()
-    run_lgb_wrapper(reduce_train, reduce_test, cols_to_drop, category_cals, params)
-    # y_pred, oof_pred = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
+    to_exclude, ajusted_test = exclude(reduce_train, reduce_test, features)
+    features = [col for col in features if col not in to_exclude]
+    
+    y_pred, oof_pred, importances, scores = run_lgb_wrapper(reduce_train,
+                             reduce_test, cols_to_drop,
+                              [], params, 
+                              usefull_features=features, n_seeds=10)
+    os.system("say 分析が終わりました。はよ結果を確認しろや")
+    import pdb; pdb.set_trace()
+    pd.concat(importances, axis=0).to_csv(f'importance_{datetime.datetime.now().strftime("%Y%m%d_%H%M")}.csv', index=False)
+    # y_pred, oof_pred = run_lgb(reduce_train, reduce_test, cols_to_drop, categoricals, params)
     # 1st 0.5613486386645519
     # seed averagingすごい聞くことがわかった。 12/25
 
@@ -157,7 +188,6 @@ if __name__ == "__main__":
 
 
     
-
 
 
 

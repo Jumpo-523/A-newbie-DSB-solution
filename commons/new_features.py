@@ -1,5 +1,5 @@
 
-
+import re
 class learningRoute(object):
     ''''''
     def __init__(self):
@@ -71,3 +71,47 @@ class learningRoute(object):
         if world_text not in ['TREETOPCITY', 'CRYSTALCAVES', 'MAGMAPEAK']: return None
         self.total_exp.update({title_text:1})
 
+
+class Title_levels(learningRoute):
+
+    def __init__(self):
+        super().__init__()
+        self.titlesLevel ={}
+        pass
+    def set_titlesLevel(self):
+        self._set_dict()
+        titlesLevel ={}
+        for k in ['title_crystalcaves', 'title_magmapeak', 'title_treetopcity']:
+            world_title_list = getattr(self, k)
+            level = 1
+            dic_ = {}
+            for title in world_title_list:
+                res = re.findall(string=title, pattern=r'Level +(\d)')
+                if res and res[0] != str(level):
+                    level += 1
+                dic_[title] = k+'_level_'+str(level)
+            titlesLevel.update(dic_)
+            setattr(self,'titlesLevel' , titlesLevel)
+        pass
+    def __getitem__(self, index):
+        assert self.titlesLevel != {}, "You have to implement 'set_titlesLevel'method beforehand"
+        return self.titlesLevel.get(index)
+
+def countSession_eachlevels(count_dict, title_levels:Title_levels, title_text):
+    # assert set(count_dict.keys()) hogehoge
+    if title_levels[title_text]:
+        count_dict[title_levels[title_text]] += 1
+    return count_dict
+
+
+
+if __name__ == "__main__":
+    import pdb; pdb.set_trace()
+    t_levels = Title_levels()
+    t_levels.set_titlesLevel()
+    print(t_levels.titlesLevel)
+    # level別に分けられていることの確認
+    # 簡単にunittest moduleって使えるんだっけ？
+    assert t_levels['Ordering Spheres'] == 'title_treetopcity_level_1'
+    assert t_levels['Dino Drink'] == 'title_magmapeak_level_2'
+    assert t_levels['Flower Waterer (Activity)'] == 'title_treetopcity_level_2'

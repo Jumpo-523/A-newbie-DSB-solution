@@ -71,7 +71,9 @@ from joblib import Parallel, delayed
 import datetime as dt
 
 
-@jit
+from .dsb_util import Feature_selection
+
+@jit()
 def qwk(a1, a2):
     """
     Source: https://www.kaggle.com/c/data-science-bowl-2019/discussion/114133#latest-660168
@@ -167,11 +169,14 @@ def cohen_kappa(y_pred, y):
     return "cohen kappa score", loss, True
 
 
-def run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params):
-    usefull_features = [col for col in reduce_train.columns if col not in cols_to_drop]
+def run_lgb(reduce_train, reduce_test, 
+            cols_to_drop, category_cals, 
+            params, usefull_features=[],target = 'accuracy_group'):
+    if not usefull_features:
+        usefull_features = [col for col in reduce_train.columns if col not in cols_to_drop]
     # define a GroupKFold strategy because we are predicting unknown installation_ids
     kf = GroupKFold(n_splits = 5)
-    target = 'accuracy_group'
+    
     oof_pred = np.zeros(len(reduce_train))
     y_pred = np.zeros(len(reduce_test))
     importances = []
@@ -179,7 +184,20 @@ def run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params):
     for fold, (tr_ind, val_ind) in enumerate(kf.split(reduce_train, groups = reduce_train['installation_id'])):
         print('Fold {}'.format(fold + 1))
         x_train, x_val = reduce_train[usefull_features].iloc[tr_ind], reduce_train[usefull_features].iloc[val_ind]
+        # set y
         y_train, y_val = reduce_train[target][tr_ind], reduce_train[target][val_ind]
+        # y_train_forStack, y_val_forStack = reduce_train['num_correct'][tr_ind], reduce_train['num_correct'][val_ind]
+
+        # # stacking
+        # fs_lasso = Feature_selection(target=target, cols_to_drop=cols_to_drop, category_cols=category_cals)
+        # # reduced_train_one_hot = fs_lasso.onehot_encoder(x_train)
+        # # reduced_val_one_hot = fs_lasso.onehot_encoder(x_val)
+        # stacked_feature = fs_lasso.fit_transform(x_train, y_train_forStack)
+        # x_train['lasso_stacking'] = stacked_feature
+        # x_val['lasso_stacking'] = fs_lasso.predict(x_val)
+        # reduce_test['lasso_stacking'] = fs_lasso.predict(reduce_test)
+        
+        
         train_set = lgb.Dataset(x_train, y_train)
         val_set = lgb.Dataset(x_val, y_val)
         
@@ -192,26 +210,29 @@ def run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params):
         y_pred += model.predict(reduce_test[usefull_features]) / kf.n_splits
     # calculate loss
     loss_score = metrics.cohen_kappa_score(reduce_train[target], get_label(y=reduce_train[target], y_pred=oof_pred), weights = 'quadratic')
-    print('Our oof cohen kappa score is :', loss_score)
-    return y_pred, oof_pred, importances
+    
+    return y_pred, oof_pred, importances, loss_score
 
 
-def run_lgb_wrapper(reduce_train, reduce_test, cols_to_drop, category_cals, params, n_seeds=20):
+def run_lgb_wrapper(reduce_train, reduce_test, cols_to_drop, category_cals, params, usefull_features=[],n_seeds=20):
     '''bagging_seedを変えてseed_averagingを実施する'''
     oof_pred = np.zeros(len(reduce_train))
     y_pred = np.zeros(len(reduce_test))
     target = 'accuracy_group'
     importances = []
+    loss_scores = []
     for i in range(n_seeds):
         params.update({'random_state':i})
-        y_pred_, oof_pred_, importances_ = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params)
+        y_pred_, oof_pred_, importances_, loss_score_ = run_lgb(reduce_train, reduce_test, cols_to_drop, category_cals, params, usefull_features)
         mean_importances = pd.concat(importances_, axis=0).groupby(by='name', as_index=False).mean()
         importances.append(mean_importances)
         y_pred += y_pred_/n_seeds
         oof_pred += oof_pred_/n_seeds
+        loss_scores.append(loss_score_)
+        print('Our oof cohen kappa score is :', loss_score_)
     loss_score = metrics.cohen_kappa_score(reduce_train[target], get_label(y=reduce_train[target], y_pred=oof_pred), weights = 'quadratic')
     print('Our oof cohen kappa score is :', loss_score)
-
+    return y_pred, oof_pred, importances, loss_scores
 
 
 
