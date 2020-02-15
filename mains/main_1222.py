@@ -83,13 +83,16 @@ if __name__ == "__main__":
     t_levels = Title_levels()
     t_levels.set_titlesLevel()
     
+    exit_completely_list = specs.loc[specs["info"].str.contains("The exit game event") , "event_id"].to_list()
+
+    maps_data.update({"exit_completely_list":exit_completely_list})
     constants = Constants(maps_data, train_labels, t_levels)
     classification_cls = eda_event_data(specs)
     [classification_cls.label_event_id(st) for st in constants.eventIdCategorizer]
     
 
     # tranform function to get the train and test set
-    categoricals = ['session_title']
+    categoricals = ['session_title','last_Clip', 'last_Activity', 'last_Assessment', 'last_Game']
     reduce_path = '../data-science-bowl-2019/features/'
     # import pdb;pdb.set_trace()
     base_path = '/Users/junpei.takubo/Downloads/kaggle_dsb/'
@@ -100,15 +103,15 @@ if __name__ == "__main__":
     reduce_train = pd.read_csv(base_path + "data-science-bowl-2019/features/reduced_train.csv")
     reduce_test = pd.read_csv(base_path + "data-science-bowl-2019/features/reduced_test.csv")
     reduce_train, reduce_test, features = preprocess(reduce_train, reduce_test, constants)
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
 
     cols_to_drop = ['game_session', 'accuracy', 'installation_id', 'timestamp', 'accuracy_group', 'timestampDate', 'num_incorrect','num_correct']
-    features = [col for col in reduce_train.columns if col not in cols_to_drop]
+    features = [col for col in reduce_train.columns if col not in cols_to_drop and col not in categoricals]
 
-    to_remove = remove_correlated_features(reduce_train, features)
-    features = [col for col in features if col not in to_remove]
-    features = [col for col in features if col not in ['Heavy, Heavier, Heaviest_2000', 'Heavy, Heavier, Heaviest']]
-    print('Training with {} features'.format(len(features)))
+    # # to_remove = remove_correlated_features(reduce_train, features)
+    # features = [col for col in features if col not in to_remove]
+    # features = [col for col in features if col not in ['Heavy, Heavier, Heaviest_2000', 'Heavy, Heavier, Heaviest']]
+    # print('Training with {} features'.format(len(features)))
     # titles_dict_indexed / 
     target_variable = 'accuracy_group' 
     y = reduce_train[target_variable]
@@ -168,11 +171,14 @@ if __name__ == "__main__":
     # reduce_test['1st_stacking'] = y_pred
     to_exclude, ajusted_test = exclude(reduce_train, reduce_test, features)
     features = [col for col in features if col not in to_exclude]
+    for c in categoricals:
+        for df in reduce_train, reduce_test:
+            df[c] = df[c].astype('category')
     
     y_pred, oof_pred, importances, scores = run_lgb_wrapper(reduce_train,
                              reduce_test, cols_to_drop,
-                              [], params, 
-                              usefull_features=features, n_seeds=10)
+                            categoricals, params, 
+                               n_seeds=10)
     os.system("say 分析が終わりました。はよ結果を確認しろや")
     import pdb; pdb.set_trace()
     pd.concat(importances, axis=0).to_csv(f'importance_{datetime.datetime.now().strftime("%Y%m%d_%H%M")}.csv', index=False)

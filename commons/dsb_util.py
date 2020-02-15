@@ -230,7 +230,9 @@ def game_features(games:Games, session, constants:Constants):
 
     games.Game_mean_event_count = (games.Game_mean_event_count + session['event_count'].iloc[-1])/2.0
     game_s = session[session.event_code == 2030]
-    session.event_id 
+    # import pdb; pdb.set_trace()
+    # exit_completely = sum(session.event_id.map(lambda x: x in constants.exit_completely_list))
+    # print(exit_completely, games.n)
     misses_cnt = cnt_miss(game_s)
     games.accumulated_game_miss += misses_cnt
     games.game_miss_mean_count += (misses_cnt + games.game_miss_mean_count)/2.0
@@ -249,6 +251,7 @@ def game_features(games:Games, session, constants:Constants):
         games.mean_game_level = (games.mean_game_level + game_level) /2.0
     except:
         pass
+    games.n += 1
     return games
 
 # constants導入につき、titles_dict消す
@@ -264,7 +267,8 @@ def get_data(installation_id, user_sample, constants:Constants, test_set=False):
     last_activity = 0
     
     user_activities_count = {'Clip':0, 'Activity': 0, 'Assessment': 0, 'Game':0}
-    
+    user_last_activities = {'last_Clip':999, 'last_Activity': 999,
+                            'last_Assessment': 999, 'last_Game':999}
     # new features: time spent in each activity
     accuracy_groups = {0:0, 1:0, 2:0, 3:0}
     all_assessments = []
@@ -326,7 +330,7 @@ def get_data(installation_id, user_sample, constants:Constants, test_set=False):
         if session_type=="Activity":
             Activity_mean_event_count = (Activity_mean_event_count + session['event_count'].iloc[-1])/2.0
         if session_type=="Game":
-            games = game_features(games, session)
+            games = game_features(games, session, constants)
         if session_type=="Clip":
             # import pdb; pdb.set_trace()
             if not constants.clip_times.get(session_title_text):
@@ -339,7 +343,7 @@ def get_data(installation_id, user_sample, constants:Constants, test_set=False):
                 clip_durations = clip_durations + (clip_duration.iloc[0] - clip_durations)/clip_n
             except KeyError:
                 pass
-
+        user_last_activities['last_' + session_type] = session_title
         # for each assessment, and only this kind off session, the features below are processed
         # and a register are generated
         if (session_type == 'Assessment') & (test_set or len(session)>1):
@@ -358,13 +362,14 @@ def get_data(installation_id, user_sample, constants:Constants, test_set=False):
             features = count_to_share(user_activities_count).copy()
             
             features.update(count_to_share(title_count).copy())
+            features.update(user_last_activities.copy())
             
             # title_event_code_count
             features.update(count_to_share(title_event_code_count).copy())
             
             features.update(gameActivityScores.copy())
             
-            features.update({"clip_durations":clip_durations})
+            features.update({"clip_durations":clip_durations}.copy())
 
             features.update(activity_type.copy())
             # features.update({"on_route":on_route_values})
@@ -382,7 +387,7 @@ def get_data(installation_id, user_sample, constants:Constants, test_set=False):
             # added an activity feature
             features['Activity_mean_event_count'] = Activity_mean_event_count
             # added game features
-            features.update(games.__dict__.copy())
+            features.update(games.to_dict().copy())
 
             # the 4 lines below add the feature of the history of the trials of this player
             # this is based on the all time attempts so far, at the moment of this assessment
@@ -486,6 +491,7 @@ def preprocess(reduce_train, reduce_test, constants:Constants):
         event_codes_str = [str(ec) for ec in event_codes]
         # df['sum_event_code_count'] = df[[str(ec) for ec in event_codes ]].sum(axis = 1)
         
+        
         # df['installation_event_code_count_mean'] = df.groupby(['installation_id'])['sum_event_code_count'].transform('mean')
         #df['installation_event_code_count_std'] = df.groupby(['installation_id'])['sum_event_code_count'].transform('std')
         # try:
@@ -494,7 +500,7 @@ def preprocess(reduce_train, reduce_test, constants:Constants):
         #     df.drop(columns=event_codes_str, inplace=True)
         
         # reduce_train = target_encoder(reduce_train, constants.target_variable, constants.categorical_features)
-    reduce_train, reduce_test = onehot_encoder(reduce_train, reduce_test, constants.categoricals)
+    # reduce_train, reduce_test = onehot_encoder(reduce_train, reduce_test, constants.categoricals)
     features = reduce_train.loc[(reduce_train.sum(axis=1) != 0), (reduce_train.sum(axis=0) != 0)].columns # delete useless columns
     features = [x for x in features if x not in ['accuracy_group', 'installation_id']] + ['acc_' + title for title in constants.assess_titles]
     return reduce_train, reduce_test, features
