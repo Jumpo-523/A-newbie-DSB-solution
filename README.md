@@ -44,11 +44,11 @@
     - https://www.kaggle.com/c/data-science-bowl-2019/discussion/126395#721312
 
 
-
 - 反省点
     - distributionをチェックして、標準化すべきかいなかなどの考察を怠った（カーネルで判断してしまった。）
-    - インターネット契約していない家なので、平日は何にもできないという不利さはあった。
-
+    - 各特徴量でPDCAを回すことを怠った。
+    - ちゃんとPipelineを作成して分析を効率化すべきだった。
+    
 What I learnt from this competition.
 
 - groupby Obj 's transformer method
