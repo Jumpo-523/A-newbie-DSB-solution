@@ -3,6 +3,14 @@
 # dsb-2019
 
 
+[kaggle のDSBコンペ](https://www.kaggle.com/c/data-science-bowl-2019/)にて利用したコード群が格納されるrepository。
+
+- 銀圏５９位に入賞しました。
+
+
+# 当コンペに関する分析日記
+
+
 - 12/05
     - shapで何がどう効いているのか確認する。
     - 難しい。→自作関数に対して処理を実行できない。
@@ -60,95 +68,3 @@ What I learnt from this competition.
 
 
 
-```python
-
-conf_string = '''
-dataset:
-  dir: "../input/data-science-bowl-2019/"
-  feature_dir: "features"
-  params:
-
-features:
-  - PastSummary3
-  - NakamaV8
-
-av:
-  split_params:
-    n_splits: 5
-    random_state: 42
-
-  model_params:
-    objective: "binary"
-    metric: "auc"
-    boosting: "gbdt"
-    max_depth: 7
-    num_leaves: 75
-    learning_rate: 0.01
-    colsample_bytree: 0.7
-    subsample: 0.1
-    subsample_freq: 1
-    seed: 111
-    feature_fraction_seed: 111
-    drop_seed: 111
-    verbose: -1
-    n_jobs: -1
-    first_metric_only: True
-
-  train_params:
-    num_boost_round: 50000
-    early_stopping_rounds: 200
-    verbose_eval: 200
-
-model:
-  name: "mlp"
-  mode: "ovr"
-  save_path: "pth/"
-  policy: "best_score"
-
-  model_params:
-    emb_drop: 0.3
-    drop: 0.5
-
-  train_params:
-    batch_size: 256
-    n_epochs: 50
-    lr: 0.001
-    scheduler:
-      name: "cosine"
-      T_max: 10
-      eta_min: 0.00001
-
-post_process:
-  params:
-    reverse: False
-    n_overall: 20
-    n_classwise: 20
-
-val:
-  name: "group_kfold"
-  n_delete: 0.9
-  percentile: 60
-  params:
-    n_splits: 5
-    random_state: 111
-
-output_dir: "output"
-'''
-```
-
-- ```remove_correlated_features```
-    is it enough to see train without test data in order to feature selection?
-# useful tips for data competitions
-
-- this repository will not show my solution until the competition is completed. 
-
-
-What I learnt.
----
-(Technical ones, which might show how stupid I am.)
-1. groupby can be iterated.
-2. Things can be looped like as follows 
-  ```python
-  for i, (j, group) in enumerate(df.groupby(xxx)):
-   ```
-   If you want to loop the groupby object, then you might be faced with tuple composed of (index,pd.DataFrame)
