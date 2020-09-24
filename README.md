@@ -8,7 +8,7 @@
 - 銀圏５９位に入賞しました。
 
 
-# 当コンペに関する分析日記
+# 当コンペに関する分析日記(完全に個人的なメモです。。)
 
 
 - 12/05
@@ -57,14 +57,13 @@
     - 各特徴量でPDCAを回すことを怠った。
     - ちゃんとPipelineを作成して分析を効率化すべきだった。
     
-What I learnt from this competition.
-
+<!--What I learnt from this competition.
 - groupby Obj 's transformer method
 - HTTPErrorの処理
     - urllib.requests.HTTPERRORだとキャッチできない。
     - request.exceptions.HTTPERROR
     - job's APIが利用しているモジュールに合わせないとキャッチできない。
-
+-->
 
 
 
