@@ -6,7 +6,7 @@
 [kaggle のDSBコンペ](https://www.kaggle.com/c/data-science-bowl-2019/)にて利用したコード群が格納されるrepository。
 
 - 銀圏５９位に入賞した時のソースコードです。（めっちゃ汚いですが...）
-
+    - https://www.kaggle.com/c/data-science-bowl-2019/leaderboard 
 
 ## 利用法
 - データを用意し、main_1222.pyを実行。
