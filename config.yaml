@@ -1,0 +1,19 @@
+params:
+  num_leaves: 61
+  min_child_weight: 0.03454472573214212
+  feature_fraction: 0.3797454081646243
+  bagging_fraction: 0.4181193142567742
+  min_data_in_leaf: 96
+  objective: 'regression'
+  metric: 'rmse'
+  early_stopping_rounds: 100
+  max_depth: -1
+  learning_rate: 0.1
+  boosting_type: "gbdt"
+  verbosity: -1
+  reg_alpha: 0.3899927210061127
+  reg_lambda: 0.6485237330340494
+  random_state: 47
+  num_threads: 16
+  lambda_l1: 1
+  lambda_l2: 1
